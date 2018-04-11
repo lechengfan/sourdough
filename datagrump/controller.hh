@@ -8,6 +8,7 @@
 class Controller
 {
 private:
+  double cwnd;
   bool debug_; /* Enables debugging output */
 
   /* Add member variables here */
