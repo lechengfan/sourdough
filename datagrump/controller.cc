@@ -14,8 +14,6 @@ Controller::Controller( const bool debug )
 /* Get current window size, in datagrams */
 unsigned int Controller::window_size()
 {
-  /* Default: fixed window size of 100 outstanding datagrams */
-
   unsigned int the_window_size = (unsigned int) cwnd;
   if ( debug_ ) {
     cerr << "At time " << timestamp_ms()
@@ -72,5 +70,5 @@ void Controller::ack_received( const uint64_t sequence_number_acked,
    before sending one more datagram */
 unsigned int Controller::timeout_ms()
 {
-  return 200; /* timeout of one second */
+  return 50;
 }
