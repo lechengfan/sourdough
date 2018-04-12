@@ -7,21 +7,19 @@ using namespace std;
 
 /* Default constructor */
 Controller::Controller( const bool debug )
-  : debug_( debug )
+  : window(10), debug_( debug )
 {}
 
 /* Get current window size, in datagrams */
 unsigned int Controller::window_size()
 {
-  /* Default: fixed window size of 100 outstanding datagrams */
-  unsigned int the_window_size = 50;
 
   if ( debug_ ) {
     cerr << "At time " << timestamp_ms()
-	 << " window size is " << the_window_size << endl;
+	 << " window size is " << window << endl;
   }
 
-  return the_window_size;
+  return window;
 }
 
 /* A datagram was sent */
@@ -50,7 +48,15 @@ void Controller::ack_received( const uint64_t sequence_number_acked,
 			       const uint64_t timestamp_ack_received )
                                /* when the ack was received (by sender) */
 {
+  uint64_t thresh = 100;
   /* Default: take no action */
+  if (timestamp_ack_received - send_timestamp_acked > thresh)
+    window /= 2;
+  else
+    window += 1;
+
+  if (window == 0)
+    window = 1;
 
   if ( debug_ ) {
     cerr << "At time " << timestamp_ack_received
