@@ -17,8 +17,9 @@ private:
   double BtlBwFilter[BtlBwFilterCapacity];
   int BtlBwFilterCurrIndex;
 
-  uint64_t RtPropFilter[RtPropFilterCapacity];
-  int RtPropFilterCurrIndex;
+  // uint64_t RtPropFilter[RtPropFilterCapacity];
+  // int RtPropFilterCurrIndex;
+  uint64_t RtProp;
 
   uint64_t latest_sequence_number_sent;
   /* Add member variables here */

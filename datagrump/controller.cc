@@ -12,13 +12,12 @@ Controller::Controller( const bool debug )
     debug_( debug ),
     BtlBwFilter{0},
     BtlBwFilterCurrIndex(0),
-    RtPropFilter{0},
-    RtPropFilterCurrIndex(0),
+    RtProp{10000000},
     latest_sequence_number_sent(0)
 {
-  for (int i = 0; i < RtPropFilterCapacity; i++) {
-     RtPropFilter[i] = 10000000;
-  }
+  // for (int i = 0; i < RtPropFilterCapacity; i++) {
+  //    RtPropFilter[i] = 10000000;
+  // }
 }
 
 /* Get current window size, in datagrams */
@@ -30,6 +29,7 @@ unsigned int Controller::window_size()
 	 << " window size is " << the_window_size << endl;
   }
 
+  cout << "Window size is " << the_window_size << endl;
   return the_window_size;
 }
 
@@ -72,22 +72,24 @@ void Controller::ack_received( const uint64_t sequence_number_acked,
   }
   
   uint64_t rtt = timestamp_ack_received - send_timestamp_acked;
-  RtPropFilter[RtPropFilterCurrIndex] = rtt;
-  RtPropFilterCurrIndex = (RtPropFilterCurrIndex + 1) % RtPropFilterCapacity;
+  // RtPropFilter[RtPropFilterCurrIndex] = rtt;
+  // RtPropFilterCurrIndex = (RtPropFilterCurrIndex + 1) % RtPropFilterCapacity;
 
-  cout << "rtt is " << rtt << endl;
+  // cout << "rtt is " << rtt << endl;
 
-  uint64_t minRtt = 10000000;
-  for (int i = 0; i < RtPropFilterCapacity; i++) {
-    if (RtPropFilter[i] < minRtt) {
-      minRtt = RtPropFilter[i];
-    }
-  }
+  // uint64_t minRtt = 10000000;
+  RtProp = min(rtt, RtProp);
+  // for (int i = 0; i < RtPropFilterCapacity; i++) {
+  //   if (RtPropFilter[i] < minRtt) {
+  //     minRtt = RtPropFilter[i];
+  //   }
+  // }
 
-  cout << "min rtt is " << minRtt << endl;
+  // cout << "min rtt is " << RtProp << endl;
 
 
-  double deliveryRate = ((double)latest_sequence_number_sent - sequence_number_acked)/(rtt);
+  double deliveryRate = ((double)latest_sequence_number_sent - sequence_number_acked + 1)/
+    (timestamp_ack_received-send_timestamp_acked);
   cout << "delivery rate is " << deliveryRate << endl;
 
   BtlBwFilter[BtlBwFilterCurrIndex] = deliveryRate;
@@ -101,8 +103,15 @@ void Controller::ack_received( const uint64_t sequence_number_acked,
   }
 
   cout << "max bw is " << maxBw << endl;
-
-  cwnd = 1.25*minRtt*maxBw;
+  double multiplier = 1;
+  int phase = sequence_number_acked % 64;
+  if (phase >= 1 && phase <= 8) {
+    multiplier = 1.5;
+  }
+  // else if (phase >= 9 && phase <= 16) {
+  //   multiplier = 0.75;
+  // }
+  cwnd = multiplier*RtProp*maxBw;
 }
 
 /* How long to wait (in milliseconds) if there are no acks
