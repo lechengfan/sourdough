@@ -48,15 +48,11 @@ void Controller::ack_received( const uint64_t sequence_number_acked,
 			       const uint64_t timestamp_ack_received )
                                /* when the ack was received (by sender) */
 {
-  uint64_t thresh = 100;
+  // uint64_t thresh = 50;
   /* Default: take no action */
-  if (timestamp_ack_received - send_timestamp_acked > thresh)
-    window /= 2;
-  else
-    window += 1;
-
-  if (window == 0)
-    window = 1;
+  uint64_t delay = timestamp_ack_received - send_timestamp_acked;
+  // cout << 20000/(delay*delay) << endl;
+  window = 20000/(delay*delay) + 10;
 
   if ( debug_ ) {
     cerr << "At time " << timestamp_ack_received
