@@ -9,6 +9,12 @@ class Controller
 {
 private:
   bool debug_; /* Enables debugging output */
+  double window_max;
+  double c;
+  double beta;
+  double cwnd;
+  uint64_t last_window_reduction_time;
+
 
   /* Add member variables here */
 

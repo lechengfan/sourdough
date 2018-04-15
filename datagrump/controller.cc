@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cmath>
 
 #include "controller.hh"
 #include "timestamp.hh"
@@ -7,20 +8,25 @@ using namespace std;
 
 /* Default constructor */
 Controller::Controller( const bool debug )
-  : debug_( debug )
+  : debug_( debug ),
+  window_max(1),
+  c(0.5),
+  beta(0.7),
+  cwnd(5),
+  last_window_reduction_time(0)
 {}
 
 /* Get current window size, in datagrams */
 unsigned int Controller::window_size()
 {
-  /* Default: fixed window size of 100 outstanding datagrams */
-  unsigned int the_window_size = 50;
+  unsigned int the_window_size = (unsigned int) cwnd;
 
   if ( debug_ ) {
     cerr << "At time " << timestamp_ms()
 	 << " window size is " << the_window_size << endl;
   }
 
+  cout << "window size is " << the_window_size <<endl;
   return the_window_size;
 }
 
@@ -37,6 +43,14 @@ void Controller::datagram_was_sent( const uint64_t sequence_number,
   if ( debug_ ) {
     cerr << "At time " << send_timestamp
 	 << " sent datagram " << sequence_number << " (timeout = " << after_timeout << ")\n";
+  }
+  if (after_timeout && (send_timestamp - last_window_reduction_time) > 10) {
+    window_max = cwnd;
+    cwnd *= beta;
+    if (cwnd < 1) 
+      cwnd = 1;
+    last_window_reduction_time = send_timestamp;
+    cout << "last time out at " << last_window_reduction_time << endl;
   }
 }
 
@@ -59,11 +73,16 @@ void Controller::ack_received( const uint64_t sequence_number_acked,
 	 << ", received @ time " << recv_timestamp_acked << " by receiver's clock)"
 	 << endl;
   }
+
+  double K = cbrt(window_max*beta/c);
+  cout << "value of K " << K << endl;
+  double t = (double) (timestamp_ack_received - last_window_reduction_time)/1000;
+  cwnd = c*pow(t-K, 3.0) + window_max;
 }
 
 /* How long to wait (in milliseconds) if there are no acks
    before sending one more datagram */
 unsigned int Controller::timeout_ms()
 {
-  return 1000; /* timeout of one second */
+  return 100; /* timeout of one second */
 }
