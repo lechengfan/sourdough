@@ -9,6 +9,8 @@ class Controller
 {
 private:
   double cwnd;
+  double estimated_rtt;
+  double rtt_dev;
   bool debug_; /* Enables debugging output */
 
   /* Add member variables here */

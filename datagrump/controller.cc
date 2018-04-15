@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cmath>
 
 #include "controller.hh"
 #include "timestamp.hh"
@@ -7,7 +8,10 @@ using namespace std;
 
 /* Default constructor */
 Controller::Controller( const bool debug )
-  : cwnd(1.0), debug_( debug ) 
+  : cwnd(1.0), 
+  estimated_rtt(-1),
+  rtt_dev(-1),
+  debug_( debug )
 {
 }
 
@@ -64,11 +68,26 @@ void Controller::ack_received( const uint64_t sequence_number_acked,
 	 << endl;
   }
   cwnd += 1.0/cwnd;
+  double sample_rtt = (double) (timestamp_ack_received - send_timestamp_acked);
+  if (estimated_rtt == -1) {
+    estimated_rtt = sample_rtt;
+    rtt_dev = 0;
+  }
+  else {
+    rtt_dev = 0.75*rtt_dev + 0.25*abs(sample_rtt - estimated_rtt);
+    estimated_rtt = 0.875 * estimated_rtt + 0.125 * sample_rtt;
+  }
+  cout << "estimated_rtt " << estimated_rtt << endl;
+  cout << "deviation " << rtt_dev << endl;
 }
 
 /* How long to wait (in milliseconds) if there are no acks
    before sending one more datagram */
 unsigned int Controller::timeout_ms()
 {
-  return 50;
+  if (estimated_rtt == -1)
+    return 25;
+  else {
+    return estimated_rtt + 4*rtt_dev;
+  }
 }
