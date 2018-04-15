@@ -3,6 +3,9 @@
 
 #include <cstdint>
 
+#define BtlBwFilterCapacity 50
+#define RtPropFilterCapacity 50
+
 /* Congestion controller interface */
 
 class Controller
@@ -10,7 +13,14 @@ class Controller
 private:
   double cwnd;
   bool debug_; /* Enables debugging output */
+  
+  double BtlBwFilter[BtlBwFilterCapacity];
+  int BtlBwFilterCurrIndex;
 
+  uint64_t RtPropFilter[RtPropFilterCapacity];
+  int RtPropFilterCurrIndex;
+
+  uint64_t latest_sequence_number_sent;
   /* Add member variables here */
 
 public:

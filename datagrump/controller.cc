@@ -1,4 +1,5 @@
 #include <iostream>
+#include <algorithm>
 
 #include "controller.hh"
 #include "timestamp.hh"
@@ -7,8 +8,17 @@ using namespace std;
 
 /* Default constructor */
 Controller::Controller( const bool debug )
-  : cwnd(1.0), debug_( debug ) 
+  : cwnd(10.0),
+    debug_( debug ),
+    BtlBwFilter{0},
+    BtlBwFilterCurrIndex(0),
+    RtPropFilter{0},
+    RtPropFilterCurrIndex(0),
+    latest_sequence_number_sent(0)
 {
+  for (int i = 0; i < RtPropFilterCapacity; i++) {
+     RtPropFilter[i] = 10000000;
+  }
 }
 
 /* Get current window size, in datagrams */
@@ -37,11 +47,8 @@ void Controller::datagram_was_sent( const uint64_t sequence_number,
     cerr << "At time " << send_timestamp
 	 << " sent datagram " << sequence_number << " (timeout = " << after_timeout << ")\n";
   }
-  if (after_timeout) {
-    cwnd /= 2;
-    if (cwnd < 1)
-      cwnd = 1;
-  }
+
+  latest_sequence_number_sent = max(sequence_number, latest_sequence_number_sent);
 }
 
 /* An ack was received */
@@ -63,12 +70,44 @@ void Controller::ack_received( const uint64_t sequence_number_acked,
 	 << ", received @ time " << recv_timestamp_acked << " by receiver's clock)"
 	 << endl;
   }
-  cwnd += 1.0/cwnd;
+  
+  uint64_t rtt = timestamp_ack_received - send_timestamp_acked;
+  RtPropFilter[RtPropFilterCurrIndex] = rtt;
+  RtPropFilterCurrIndex = (RtPropFilterCurrIndex + 1) % RtPropFilterCapacity;
+
+  cout << "rtt is " << rtt << endl;
+
+  uint64_t minRtt = 10000000;
+  for (int i = 0; i < RtPropFilterCapacity; i++) {
+    if (RtPropFilter[i] < minRtt) {
+      minRtt = RtPropFilter[i];
+    }
+  }
+
+  cout << "min rtt is " << minRtt << endl;
+
+
+  double deliveryRate = ((double)latest_sequence_number_sent - sequence_number_acked)/(rtt);
+  cout << "delivery rate is " << deliveryRate << endl;
+
+  BtlBwFilter[BtlBwFilterCurrIndex] = deliveryRate;
+  BtlBwFilterCurrIndex = (BtlBwFilterCurrIndex + 1) % BtlBwFilterCapacity;
+
+  double maxBw = 0;
+  for (int i = 0; i < BtlBwFilterCapacity; i++) {
+    if (BtlBwFilter[i] > maxBw) {
+      maxBw = BtlBwFilter[i];
+    }
+  }
+
+  cout << "max bw is " << maxBw << endl;
+
+  cwnd = 1.25*minRtt*maxBw;
 }
 
 /* How long to wait (in milliseconds) if there are no acks
    before sending one more datagram */
 unsigned int Controller::timeout_ms()
 {
-  return 50;
+  return 500;
 }
