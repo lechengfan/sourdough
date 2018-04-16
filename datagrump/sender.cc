@@ -25,6 +25,8 @@ private:
      next expects will be acknowledged by the receiver */
   uint64_t next_ack_expected_;
 
+  uint64_t next_send_time;
+
   void send_datagram( const bool after_timeout );
   void got_ack( const uint64_t timestamp, const ContestMessage & msg );
   bool window_is_open();
@@ -64,7 +66,8 @@ DatagrumpSender::DatagrumpSender( const char * const host,
   : socket_(),
     controller_( debug ),
     sequence_number_( 0 ),
-    next_ack_expected_( 0 )
+    next_ack_expected_( 0 ),
+    next_send_time(0)
 {
   /* turn on timestamps when socket receives a datagram */
   socket_.set_timestamps();
@@ -99,9 +102,13 @@ void DatagrumpSender::send_datagram( const bool after_timeout )
 {
   /* All messages use the same dummy payload */
   static const string dummy_payload( 1424, 'x' );
+  // if (sequence_number_ - next_ack_expected_ >= controller_.max_in_flight())
+  //   return;
 
   ContestMessage cm( sequence_number_++, dummy_payload );
   cm.set_send_timestamp();
+
+  next_send_time = cm.header.send_timestamp + controller_.get_send_delay();
   socket_.send( cm.to_string() );
 
   /* Inform congestion controller */
@@ -112,7 +119,13 @@ void DatagrumpSender::send_datagram( const bool after_timeout )
 
 bool DatagrumpSender::window_is_open()
 {
-  return sequence_number_ - next_ack_expected_ < controller_.window_size();
+  ContestMessage cm(0, "x");
+  cm.set_send_timestamp();
+  bool time_to_send = cm.header.send_timestamp >= next_send_time;
+  cout << "in window is open time is" << cm.header.send_timestamp << endl;
+  cout << "in window is open next_send_time is" << cm.header.send_timestamp << endl;
+  return time_to_send;
+  // return time_to_send && (sequence_number_ - next_ack_expected_ < controller_.get_max_in_flight());
 }
 
 int DatagrumpSender::loop()
@@ -123,14 +136,13 @@ int DatagrumpSender::loop()
   /* first rule: if the window is open, close it by
      sending more datagrams */
   poller.add_action( Action( socket_, Direction::Out, [&] () {
-	/* Close the window */
-	while ( window_is_open() ) {
-	  send_datagram( false );
-	}
+  while(window_is_open()) {
+    send_datagram( false );
+  }
 	return ResultType::Continue;
-      },
-      /* We're only interested in this rule when the window is open */
-      [&] () { return window_is_open(); } ) );
+  },
+  [&] () { return true; } ) );
+
 
   /* second rule: if sender receives an ack,
      process it and inform the controller

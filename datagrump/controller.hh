@@ -11,17 +11,23 @@
 class Controller
 {
 private:
-  double cwnd;
   bool debug_; /* Enables debugging output */
   
   double BtlBwFilter[BtlBwFilterCapacity];
   int BtlBwFilterCurrIndex;
+  double maxBw;
 
-  // uint64_t RtPropFilter[RtPropFilterCapacity];
-  // int RtPropFilterCurrIndex;
+  uint64_t RtPropFilter[RtPropFilterCapacity];
+  int RtPropFilterCurrIndex;
   uint64_t RtProp;
 
   uint64_t latest_sequence_number_sent;
+
+  double cwnd_gain;
+
+  double pacing_gain;
+
+  unsigned int max_in_flight;
   /* Add member variables here */
 
 public:
@@ -32,8 +38,9 @@ public:
   /* Default constructor */
   Controller( const bool debug );
 
-  /* Get current window size, in datagrams */
-  unsigned int window_size();
+  unsigned int get_max_in_flight();
+
+  double get_send_delay();
 
   /* A datagram was sent */
   void datagram_was_sent( const uint64_t sequence_number,

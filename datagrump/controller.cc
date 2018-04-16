@@ -8,30 +8,35 @@ using namespace std;
 
 /* Default constructor */
 Controller::Controller( const bool debug )
-  : cwnd(10.0),
-    debug_( debug ),
+  : debug_( debug ),
     BtlBwFilter{0},
     BtlBwFilterCurrIndex(0),
+    maxBw(0.05),
+    RtPropFilter{0},
+    RtPropFilterCurrIndex{0},
     RtProp{10000000},
-    latest_sequence_number_sent(0)
+    latest_sequence_number_sent(0),
+    cwnd_gain(2),
+    pacing_gain(1.25),
+    max_in_flight(5)
 {
-  // for (int i = 0; i < RtPropFilterCapacity; i++) {
-  //    RtPropFilter[i] = 10000000;
-  // }
+  for (int i = 0; i < RtPropFilterCapacity; i++) {
+     RtPropFilter[i] = 10000000;
+  }
 }
 
 /* Get current window size, in datagrams */
-unsigned int Controller::window_size()
-{
-  unsigned int the_window_size = (unsigned int) cwnd;
-  if ( debug_ ) {
-    cerr << "At time " << timestamp_ms()
-	 << " window size is " << the_window_size << endl;
-  }
+// unsigned int Controller::window_size()
+// {
+//   unsigned int the_window_size = (unsigned int) cwnd;
+//   if ( debug_ ) {
+//     cerr << "At time " << timestamp_ms()
+// 	 << " window size is " << the_window_size << endl;
+//   }
 
-  cout << "Window size is " << the_window_size << endl;
-  return the_window_size;
-}
+//   cout << "Window size is " << the_window_size << endl;
+//   return the_window_size;
+// }
 
 /* A datagram was sent */
 void Controller::datagram_was_sent( const uint64_t sequence_number,
@@ -72,18 +77,17 @@ void Controller::ack_received( const uint64_t sequence_number_acked,
   }
   
   uint64_t rtt = timestamp_ack_received - send_timestamp_acked;
-  // RtPropFilter[RtPropFilterCurrIndex] = rtt;
-  // RtPropFilterCurrIndex = (RtPropFilterCurrIndex + 1) % RtPropFilterCapacity;
+  RtPropFilter[RtPropFilterCurrIndex] = rtt;
+  RtPropFilterCurrIndex = (RtPropFilterCurrIndex + 1) % RtPropFilterCapacity;
 
   // cout << "rtt is " << rtt << endl;
 
   // uint64_t minRtt = 10000000;
-  RtProp = min(rtt, RtProp);
-  // for (int i = 0; i < RtPropFilterCapacity; i++) {
-  //   if (RtPropFilter[i] < minRtt) {
-  //     minRtt = RtPropFilter[i];
-  //   }
-  // }
+  for (int i = 0; i < RtPropFilterCapacity; i++) {
+    if (RtPropFilter[i] < RtProp) {
+      RtProp = RtPropFilter[i];
+    }
+  }
 
   // cout << "min rtt is " << RtProp << endl;
 
@@ -95,23 +99,25 @@ void Controller::ack_received( const uint64_t sequence_number_acked,
   BtlBwFilter[BtlBwFilterCurrIndex] = deliveryRate;
   BtlBwFilterCurrIndex = (BtlBwFilterCurrIndex + 1) % BtlBwFilterCapacity;
 
-  double maxBw = 0;
   for (int i = 0; i < BtlBwFilterCapacity; i++) {
     if (BtlBwFilter[i] > maxBw) {
       maxBw = BtlBwFilter[i];
     }
   }
 
-  cout << "max bw is " << maxBw << endl;
-  double multiplier = 1;
-  int phase = sequence_number_acked % 64;
-  if (phase >= 1 && phase <= 8) {
-    multiplier = 1.5;
+  // cout << "max bw is " << maxBw << endl;
+
+  switch((timestamp_ack_received / RtProp) % 8) {
+    case 0:
+      pacing_gain = 20;
+      break;
+    case 1:
+      pacing_gain = 10;
+      break;
+    default:
+      pacing_gain = 10;
+      break;
   }
-  // else if (phase >= 9 && phase <= 16) {
-  //   multiplier = 0.75;
-  // }
-  cwnd = multiplier*RtProp*maxBw;
 }
 
 /* How long to wait (in milliseconds) if there are no acks
@@ -119,4 +125,19 @@ void Controller::ack_received( const uint64_t sequence_number_acked,
 unsigned int Controller::timeout_ms()
 {
   return 500;
+}
+
+
+unsigned int Controller::get_max_in_flight()
+{
+  double bdp = RtProp*maxBw;
+  cout << "max in flight is " << (cwnd_gain * bdp) << endl;
+  max_in_flight = (unsigned int) (cwnd_gain * bdp);
+  return max_in_flight;
+}
+
+double Controller::get_send_delay()
+{
+  cout << "the delay is " << 1.0/(pacing_gain * maxBw) << endl;
+  return 1.0/(pacing_gain * maxBw);
 }
