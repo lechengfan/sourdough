@@ -7,7 +7,11 @@ using namespace std;
 
 /* Default constructor */
 Controller::Controller( const bool debug )
-  : window(10), debug_( debug )
+  : window(10.0),
+  min_rtt(100000),
+  alpha(0.07),
+  beta(0.12),
+  debug_( debug )
 {}
 
 /* Get current window size, in datagrams */
@@ -19,7 +23,7 @@ unsigned int Controller::window_size()
 	 << " window size is " << window << endl;
   }
 
-  return window;
+  return (unsigned int) window;
 }
 
 /* A datagram was sent */
@@ -50,9 +54,20 @@ void Controller::ack_received( const uint64_t sequence_number_acked,
 {
   // uint64_t thresh = 50;
   /* Default: take no action */
-  uint64_t delay = timestamp_ack_received - send_timestamp_acked;
-  // cout << 20000/(delay*delay) << endl;
-  window = 20000/(delay*delay) + 10;
+  uint64_t actual_rtt = timestamp_ack_received - send_timestamp_acked;
+  min_rtt = min(min_rtt, actual_rtt);
+  unsigned int rounded_window = (unsigned int) window;
+  double expected_rate = (double) rounded_window/min_rtt;
+  double actual_rate = (double) rounded_window/actual_rtt;
+  double difference = expected_rate - actual_rate;
+  cout << "difference is " << difference << endl;
+  if (difference < alpha) {
+    window += 3/window;
+
+  }
+  else if (difference > beta) {
+    window -= 1/window;
+  }
 
   if ( debug_ ) {
     cerr << "At time " << timestamp_ack_received

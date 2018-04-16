@@ -8,8 +8,11 @@
 class Controller
 {
 private:
-  int window;
-  bool debug_; /* Enables debugging output */
+  double window;
+  uint64_t min_rtt;
+  double alpha;
+  double beta;
+  bool debug_; /* enables debugging output */
 
   /* Add member variables here */
 
