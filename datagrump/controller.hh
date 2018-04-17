@@ -12,6 +12,7 @@ private:
   uint64_t min_rtt;
   double alpha;
   double beta;
+  uint64_t last_increase_time;
   bool debug_; /* enables debugging output */
 
   /* Add member variables here */

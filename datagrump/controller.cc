@@ -7,10 +7,11 @@ using namespace std;
 
 /* Default constructor */
 Controller::Controller( const bool debug )
-  : window(15.0),
+  : window(9.0),
   min_rtt(100000),
   alpha(0.07),
-  beta(0.15),
+  beta(0.12),
+  last_increase_time(0),
   debug_( debug )
 {}
 
@@ -60,16 +61,23 @@ void Controller::ack_received( const uint64_t sequence_number_acked,
   double expected_rate = (double) rounded_window/min_rtt;
   double actual_rate = (double) rounded_window/actual_rtt;
   double difference = expected_rate - actual_rate;
-  // cout << "difference is " << difference << endl;
-  cout << "1/delay is " << 1.0/actual_rtt << endl;
+  // cout << "1/delay is " << 1.0/actual_rtt << endl;
+  // cout << "actual rate is  " << actual_rate << endl;
   if (difference < alpha) {
     // window += 2.5/window;
-    window += 3.0/window;
-    if (difference < alpha/2)
-      window += 3.0/window;
+    window += 1.0/window;
+    if (difference < alpha/3 && (timestamp_ack_received - last_increase_time) > 100) {
+      cout << "drastically increase window by " << window/10 << " at time " << timestamp_ack_received << endl;
+      window += window/10;
+      last_increase_time = timestamp_ack_received;
+    }
   }
   else if (difference > beta) {
-    window -= 2/window;
+    window -= 1/window;
+    // if (difference > 1.5*beta) {
+    //   cout << "drastically reduce by " << window/3 << " at time " << timestamp_ack_received << endl;
+    //   window -= window/3;
+    // }
   }
 
   if ( debug_ ) {
