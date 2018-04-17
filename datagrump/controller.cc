@@ -23,7 +23,8 @@ unsigned int Controller::window_size()
     cerr << "At time " << timestamp_ms()
 	 << " window size is " << window << endl;
   }
-
+  if (window < 1) 
+    window = 1;
   return (unsigned int) window;
 }
 
@@ -41,6 +42,8 @@ void Controller::datagram_was_sent( const uint64_t sequence_number,
     cerr << "At time " << send_timestamp
 	 << " sent datagram " << sequence_number << " (timeout = " << after_timeout << ")\n";
   }
+  if (after_timeout) 
+    window *= 0.5;
 }
 
 /* An ack was received */
@@ -73,7 +76,7 @@ void Controller::ack_received( const uint64_t sequence_number_acked,
     }
   }
   else if (difference > beta) {
-    window -= 1/window;
+    window -= 1.0/window;
     // if (difference > 1.5*beta) {
     //   cout << "drastically reduce by " << window/3 << " at time " << timestamp_ack_received << endl;
     //   window -= window/3;
@@ -93,5 +96,5 @@ void Controller::ack_received( const uint64_t sequence_number_acked,
    before sending one more datagram */
 unsigned int Controller::timeout_ms()
 {
-  return 1000; /* timeout of one second */
+  return 50; /* timeout of one second */
 }
