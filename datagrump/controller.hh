@@ -5,10 +5,18 @@
 
 /* Congestion controller interface */
 
+#define RTT_STANDING_ESTIMATE_WINDOW 100
+#define DELTA .25
+
 class Controller
 {
 private:
   bool debug_; /* Enables debugging output */
+  double cwnd;
+  uint64_t min_rtt;
+  uint64_t rtt_estimates[RTT_STANDING_ESTIMATE_WINDOW];
+  int rtt_estimates_index;
+  double velocity;
 
   /* Add member variables here */
 
