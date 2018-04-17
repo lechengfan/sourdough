@@ -64,23 +64,16 @@ void Controller::ack_received( const uint64_t sequence_number_acked,
   double expected_rate = (double) rounded_window/min_rtt;
   double actual_rate = (double) rounded_window/actual_rtt;
   double difference = expected_rate - actual_rate;
-  // cout << "1/delay is " << 1.0/actual_rtt << endl;
-  // cout << "actual rate is  " << actual_rate << endl;
   if (difference < alpha) {
-    // window += 2.5/window;
     window += 1.0/window;
-    if (difference < alpha/3 && (timestamp_ack_received - last_increase_time) > 100) {
+    if (difference < alpha/2 && (timestamp_ack_received - last_increase_time) > 100) {
       cout << "drastically increase window by " << window/10 << " at time " << timestamp_ack_received << endl;
-      window += window/10;
+      window += window/6;
       last_increase_time = timestamp_ack_received;
     }
   }
   else if (difference > beta) {
     window -= 1.0/window;
-    // if (difference > 1.5*beta) {
-    //   cout << "drastically reduce by " << window/3 << " at time " << timestamp_ack_received << endl;
-    //   window -= window/3;
-    // }
   }
 
   if ( debug_ ) {
@@ -96,5 +89,5 @@ void Controller::ack_received( const uint64_t sequence_number_acked,
    before sending one more datagram */
 unsigned int Controller::timeout_ms()
 {
-  return 50; /* timeout of one second */
+  return 40; /* timeout of one second */
 }
