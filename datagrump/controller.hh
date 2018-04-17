@@ -13,6 +13,7 @@ private:
   double alpha;
   double beta;
   uint64_t last_increase_time;
+  uint64_t last_large_decrease_time;
   bool debug_; /* enables debugging output */
 
   /* Add member variables here */

@@ -12,6 +12,7 @@ Controller::Controller( const bool debug )
   alpha(0.07),
   beta(0.12),
   last_increase_time(0),
+  last_large_decrease_time(0),
   debug_( debug )
 {}
 
@@ -66,18 +67,21 @@ void Controller::ack_received( const uint64_t sequence_number_acked,
   if (difference < alpha) {
     // window += 2.5/window;
     window += 1.0/window;
-    if (difference < alpha/3 && (timestamp_ack_received - last_increase_time) > 100) {
+    if (difference < alpha/3 &&
+      (timestamp_ack_received - last_large_decrease_time) > 300 &&
+      (timestamp_ack_received - last_increase_time) > 100) {
       cout << "drastically increase window by " << window/10 << " at time " << timestamp_ack_received << endl;
       window += window/10;
       last_increase_time = timestamp_ack_received;
     }
   }
   else if (difference > beta) {
-    window -= 1/window;
-    // if (difference > 1.5*beta) {
-    //   cout << "drastically reduce by " << window/3 << " at time " << timestamp_ack_received << endl;
-    //   window -= window/3;
-    // }
+    window -= 1.0/window;
+    if (difference > 1.4*beta && (timestamp_ack_received - last_large_decrease_time) > 100) {
+      cout << "drastically reduce by " << window/5 << " at time " << timestamp_ack_received << endl;
+      window *= 0.8;
+      last_large_decrease_time = timestamp_ack_received;
+    }
   }
 
   if ( debug_ ) {
