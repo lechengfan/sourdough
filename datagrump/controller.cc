@@ -9,8 +9,8 @@ using namespace std;
 Controller::Controller( const bool debug )
   : window(9.0),
   min_rtt(100000),
-  alpha(0.07),
-  beta(0.12),
+  alpha(0.06),
+  beta(0.14),
   last_increase_time(0),
   debug_( debug )
 {}
