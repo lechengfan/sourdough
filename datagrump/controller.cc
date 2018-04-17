@@ -7,10 +7,10 @@ using namespace std;
 
 /* Default constructor */
 Controller::Controller( const bool debug )
-  : window(10.0),
+  : window(15.0),
   min_rtt(100000),
   alpha(0.07),
-  beta(0.12),
+  beta(0.15),
   debug_( debug )
 {}
 
@@ -60,13 +60,16 @@ void Controller::ack_received( const uint64_t sequence_number_acked,
   double expected_rate = (double) rounded_window/min_rtt;
   double actual_rate = (double) rounded_window/actual_rtt;
   double difference = expected_rate - actual_rate;
-  cout << "difference is " << difference << endl;
+  // cout << "difference is " << difference << endl;
+  cout << "1/delay is " << 1.0/actual_rtt << endl;
   if (difference < alpha) {
-    window += 3/window;
-
+    // window += 2.5/window;
+    window += 3.0/window;
+    if (difference < alpha/2)
+      window += 3.0/window;
   }
   else if (difference > beta) {
-    window -= 1/window;
+    window -= 2/window;
   }
 
   if ( debug_ ) {
