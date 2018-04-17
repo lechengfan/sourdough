@@ -56,8 +56,6 @@ void Controller::ack_received( const uint64_t sequence_number_acked,
 			       const uint64_t timestamp_ack_received )
                                /* when the ack was received (by sender) */
 {
-  // uint64_t thresh = 50;
-  /* Default: take no action */
   uint64_t actual_rtt = timestamp_ack_received - send_timestamp_acked;
   min_rtt = min(min_rtt, actual_rtt);
   unsigned int rounded_window = (unsigned int) window;
@@ -67,7 +65,7 @@ void Controller::ack_received( const uint64_t sequence_number_acked,
   if (difference < alpha) {
     window += 1.0/window;
     if (difference < alpha/2 && (timestamp_ack_received - last_increase_time) > 100) {
-      cout << "drastically increase window by " << window/10 << " at time " << timestamp_ack_received << endl;
+      cout << "drastically increase window by " << window/6 << " at time " << timestamp_ack_received << endl;
       window += window/6;
       last_increase_time = timestamp_ack_received;
     }
